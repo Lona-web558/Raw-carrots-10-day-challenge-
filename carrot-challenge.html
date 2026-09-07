@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10-Day Raw Carrots Challenge</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root {
+    --carrot: #f4a015;
+    --carrot-dark: #d97e0a;
+    --leaf: #4c8c4a;
+    --cream: #fffaf0;
+  }
+  body {
+    background: linear-gradient(160deg, #fff7e6 0%, #fdf1dc 100%);
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    min-height: 100vh;
+  }
+  .hero {
+    background: linear-gradient(135deg, var(--carrot) 0%, var(--carrot-dark) 100%);
+    color: white;
+    border-radius: 0 0 30px 30px;
+    padding: 2.5rem 1rem 2rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .hero h1 { font-weight: 800; }
+  .progress-ring-wrap { display:flex; justify-content:center; margin-top: 1rem; }
+  .card-day {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    background: white;
+  }
+  .card-day:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+  .card-day.done {
+    background: linear-gradient(135deg, #eafbea, #d9f5da);
+    border: 2px solid var(--leaf);
+  }
+  .card-day .day-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--carrot-dark);
+  }
+  .card-day.done .day-num { color: var(--leaf); }
+  .carrot-icon { font-size: 2.2rem; }
+  .check-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1.3rem;
+    color: var(--leaf);
+    display: none;
+  }
+  .card-day.done .check-badge { display: block; }
+  .card-day { position: relative; }
+  .streak-badge {
+    background: var(--leaf);
+    color: white;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .btn-carrot {
+    background-color: var(--carrot);
+    border-color: var(--carrot);
+    color: white;
+    font-weight: 600;
+  }
+  .btn-carrot:hover { background-color: var(--carrot-dark); border-color: var(--carrot-dark); color: white; }
+  .footer-note { color: #8a6d3b; font-size: 0.85rem; }
+  .reset-link { cursor: pointer; }
+  .confetti-msg {
+    background: linear-gradient(135deg, var(--leaf), #6bb96a);
+    color: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero text-center">
+  <div class="carrot-icon">🥕🥕🥕</div>
+  <h1>10-Day Raw Carrots Challenge</h1>
+  <p class="mb-1">Tap a day once you've eaten your raw carrot(s) for the day.</p>
+  <div id="progressText" class="fs-5 fw-semibold mt-2">Day 0 of 10 complete</div>
+  <div class="progress mt-3 mx-auto" style="max-width:400px; height: 14px; border-radius: 10px; background: rgba(255,255,255,0.35);">
+    <div id="progressBar" class="progress-bar" role="progressbar" style="width:0%; background-color: #ffffff;"></div>
+  </div>
+</div>
+
+<div class="container py-4">
+
+  <div class="row justify-content-center mb-3">
+    <div class="col-auto">
+      <span class="streak-badge">🔥 Current streak: <span id="streakCount">0</span> day(s)</span>
+    </div>
+  </div>
+
+  <div id="confettiMsg" class="confetti-msg mb-4">
+    <h3>🎉 Challenge Complete! 🎉</h3>
+    <p class="mb-0">You crunched your way through 10 days of raw carrots. Nicely done!</p>
+  </div>
+
+  <div class="row row-cols-2 row-cols-md-5 g-3" id="dayGrid"></div>
+
+  <div class="text-center mt-4">
+    <button class="btn btn-outline-secondary btn-sm reset-link" id="resetBtn">Reset Challenge</button>
+  </div>
+
+  <p class="text-center footer-note mt-4">
+    Your progress is saved automatically in this browser (localStorage) — it'll still be here next time you visit on this device.
+  </p>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'carrotChallenge10Day';
+const TOTAL_DAYS = 10;
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch(e) {
+      return Array(TOTAL_DAYS).fill(false);
+    }
+  }
+  return Array(TOTAL_DAYS).fill(false);
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+function computeStreak(state) {
+  // longest current streak counting from day 1 forward, consecutive completed days
+  let streak = 0;
+  for (let i = 0; i < state.length; i++) {
+    if (state[i]) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function render() {
+  const grid = document.getElementById('dayGrid');
+  grid.innerHTML = '';
+  state.forEach((done, idx) => {
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.innerHTML = `
+      <div class="card card-day text-center py-4 ${done ? 'done' : ''}" data-idx="${idx}">
+        <span class="check-badge">✅</span>
+        <div class="carrot-icon">🥕</div>
+        <div class="day-num">Day ${idx + 1}</div>
+        <div class="small text-muted">${done ? 'Completed' : 'Tap when done'}</div>
+      </div>
+    `;
+    grid.appendChild(col);
+  });
+
+  document.querySelectorAll('.card-day').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.getAttribute('data-idx'));
+      state[idx] = !state[idx];
+      saveState(state);
+      render();
+    });
+  });
+
+  const completedCount = state.filter(Boolean).length;
+  document.getElementById('progressText').textContent = `Day ${completedCount} of ${TOTAL_DAYS} complete`;
+  const pct = Math.round((completedCount / TOTAL_DAYS) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('streakCount').textContent = computeStreak(state);
+
+  const confetti = document.getElementById('confettiMsg');
+  confetti.style.display = completedCount === TOTAL_DAYS ? 'block' : 'none';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all 10 days? This cannot be undone.')) {
+    state = Array(TOTAL_DAYS).fill(false);
+    saveState(state);
+    render();
+  }
+});
+
+render();
+</script>
+
+</body>
+</html>
